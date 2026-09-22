@@ -1,0 +1,19 @@
+[project]
+name = "dwgviewer"
+version = "0.1.0"
+description = "Modern Web DWG/CAD Viewer & Multi-Page PDF Exporter"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "nicegui>=3.0.0",
+    "ezdxf>=1.4.0",
+    "matplotlib>=3.10.0",
+    "pypdf>=6.0.0",
+    "reportlab>=4.0.0",
+    "pillow>=10.0.0",
+    "pytest>=8.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
