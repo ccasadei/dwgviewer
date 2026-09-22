@@ -174,8 +174,8 @@ def load_cad_file(file_path: str, cache_dir: str = ".cache") -> CadModel:
         bbox=globale_bbox,
     )
 
-    # Count entities per layer in modelspace
-    entity_counts = Counter(e.dxf.layer for e in msp)
+    # Count entities per layer in modelspace defensively
+    entity_counts = Counter(getattr(e.dxf, "layer", "0") for e in msp)
 
     layers: list[LayerInfo] = []
     seen_layers = set()

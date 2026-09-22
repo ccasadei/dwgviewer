@@ -1,12 +1,10 @@
 import os
+import ezdxf
 import pytest
 from cad_engine import (
-    load_cad_file,
     CadModel,
-    TavolaInfo,
-    LayerInfo,
     convert_dwg_to_dxf,
-    find_dwg2dxf,
+    load_cad_file,
 )
 
 
@@ -84,14 +82,23 @@ def test_layer_info_properties():
     assert isinstance(muri_layer.color_aci, int)
 
 
-def test_load_dxf_direct():
-    dxf_path = "Tavole.dxf"
-    assert os.path.exists(dxf_path), "Tavole.dxf must be present in root"
+def test_load_dxf_direct(tmp_path):
+    dxf_file = str(tmp_path / "test_sample.dxf")
+    doc = ezdxf.new("R2000")
+    doc.layers.add("CUSTOM_LAYER", color=1)  # Red
+    msp = doc.modelspace()
+    msp.add_line((0, 0), (100, 200), dxfattribs={"layer": "CUSTOM_LAYER"})
+    doc.saveas(dxf_file)
 
-    model = load_cad_file(dxf_path)
+    model = load_cad_file(dxf_file)
     assert isinstance(model, CadModel)
     assert model.dxf_doc is not None
-    assert "Tavola 1" in model.tavole
+    assert "Globale" in model.tavole
+    layer_names = [l.name for l in model.layers]
+    assert "CUSTOM_LAYER" in layer_names
+    custom_layer = next(l for l in model.layers if l.name == "CUSTOM_LAYER")
+    assert custom_layer.count == 1
+    assert custom_layer.color == "#ff0000"
 
 
 def test_dwg_caching(tmp_path):
