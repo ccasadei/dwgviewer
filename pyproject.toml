@@ -17,3 +17,11 @@ dependencies = [
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["cad_engine", "renderer", "pdf_exporter", "ui_components", "main"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+
