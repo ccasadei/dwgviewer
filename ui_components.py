@@ -14,7 +14,7 @@ import os
 import re
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
-from nicegui import app, ui
+from nicegui import app, core, ui
 
 from cad_engine import CadModel, LayerInfo, TavolaInfo
 from pdf_exporter import (
@@ -23,6 +23,15 @@ from pdf_exporter import (
     export_tavola_to_pdf,
 )
 from renderer import sanitize_layer_name
+
+
+def safe_run_javascript(code: str, **kwargs: Any) -> None:
+    """Execute JavaScript safely, ignoring errors when no active client or event loop is available."""
+    try:
+        if core.loop is not None:
+            ui.run_javascript(code, **kwargs)
+    except Exception:
+        pass
 
 
 def format_layer_data(layers: Sequence[LayerInfo]) -> List[Dict[str, Any]]:
@@ -226,6 +235,8 @@ class CadViewerState:
         self.selected_bbox: Optional[Tuple[float, float, float, float]] = None
         self.paper_size: str = "A3"
         self._listeners: List[Callable[[], None]] = []
+        self._bulk_updating: bool = False
+        self.export_dialog: Optional[ui.dialog] = None
 
     def set_active_tavola(self, name: str) -> None:
         """Update active sheet selection."""
@@ -341,14 +352,10 @@ if os.path.isdir("static"):
 
 
 def inject_panzoom_head_scripts() -> None:
-    """Inject Panzoom CDN and local helper scripts into page head."""
+    """Inject Panzoom and local CAD helper scripts into page head."""
     # Local scripts mounted under /static
     ui.add_head_html('<script src="/static/panzoom.min.js"></script>')
     ui.add_head_html('<script src="/static/cad_canvas.js"></script>')
-    # CDN Fallback for panzoom in case static mount is bypassed
-    ui.add_head_html(
-        '<script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>'
-    )
     # Dynamic layer style element placeholder
     ui.add_head_html('<style id="cad-dynamic-layer-styles"></style>')
 
@@ -452,7 +459,7 @@ def _handle_tavola_click(
             btn.classes(add="text-slate-300", remove="text-white ring-1 ring-cyan-400 shadow-sm")
 
     # Trigger client-side smooth pan/zoom
-    ui.run_javascript(f"if (window.cadViewer) window.cadViewer.zoomToTavola('{key}');")
+    safe_run_javascript(f"if (window.cadViewer) window.cadViewer.zoomToTavola('{key}');")
 
     if callback:
         callback(key)
@@ -474,7 +481,7 @@ def _toggle_selection_mode(
         btn.classes(add="outline text-slate-400", remove="bg-cyan-600 text-white ring-1 ring-cyan-300")
         btn.text = "Seleziona Riquadro"
 
-    ui.run_javascript(f"if (window.cadViewer) window.cadViewer.setSelectionMode({str(state.selection_active).lower()});")
+    safe_run_javascript(f"if (window.cadViewer) window.cadViewer.setSelectionMode({str(state.selection_active).lower()});")
     if callback:
         callback(state.selection_active)
 
@@ -492,6 +499,7 @@ def create_canvas(
     state: CadViewerState,
     svg_content: str,
     on_export_custom_bbox: Optional[Callable[[Tuple[float, float, float, float]], None]] = None,
+    export_dialog: Optional[ui.dialog] = None,
 ) -> ui.element:
     """Build the responsive CAD viewport container embedding SVG, Panzoom, and selection marquee."""
     inject_panzoom_head_scripts()
@@ -506,7 +514,7 @@ def create_canvas(
     # Hidden input and button to sync custom marquee selections back to NiceGUI
     hidden_bbox_input = ui.input(value="").props("id=cad-selected-bbox-input").classes("hidden")
 
-    def _on_bbox_synced(e: Any) -> None:
+    def _on_bbox_synced(e: Any = None) -> None:
         try:
             val = hidden_bbox_input.value
             if val:
@@ -514,15 +522,24 @@ def create_canvas(
                 if len(coords) == 4:
                     bbox = (float(coords[0]), float(coords[1]), float(coords[2]), float(coords[3]))
                     state.set_selected_bbox(bbox)
-                    if on_export_custom_bbox:
-                        on_export_custom_bbox(bbox)
         except Exception:
             pass
+
+    def _on_trigger_export_pdf() -> None:
+        _on_bbox_synced()
+        if state.selected_bbox:
+            if on_export_custom_bbox:
+                on_export_custom_bbox(state.selected_bbox)
+            dlg = export_dialog or getattr(state, "export_dialog", None)
+            if dlg:
+                if hasattr(dlg, "refresh_options"):
+                    dlg.refresh_options()
+                dlg.open()
 
     hidden_bbox_input.on("change", _on_bbox_synced)
 
     # Hidden trigger button clicked by JS popup "Stampa PDF"
-    ui.button("", on_click=_on_bbox_synced).props("id=btn-trigger-bbox-pdf").classes("hidden")
+    ui.button("", on_click=_on_trigger_export_pdf).props("id=btn-trigger-bbox-pdf").classes("hidden")
 
     # Main viewport container
     bg_class = "bg-[#12151b]" if state.dark_mode else "bg-white"
@@ -579,7 +596,7 @@ def create_canvas(
         }}
     }}, 80);
     """
-    ui.run_javascript(init_script)
+    safe_run_javascript(init_script)
 
     return viewport
 
@@ -591,22 +608,22 @@ def create_floating_hud() -> ui.element:
     ) as hud:
         ui.button(
             icon="add",
-            on_click=lambda: ui.run_javascript("if(window.cadViewer) window.cadViewer.zoomIn();"),
+            on_click=lambda: safe_run_javascript("if(window.cadViewer) window.cadViewer.zoomIn();"),
         ).props("dense round flat color=slate-200").classes("text-sm hover:bg-slate-800").tooltip("Ingrandisci (Zoom +)")
 
         ui.button(
             icon="remove",
-            on_click=lambda: ui.run_javascript("if(window.cadViewer) window.cadViewer.zoomOut();"),
+            on_click=lambda: safe_run_javascript("if(window.cadViewer) window.cadViewer.zoomOut();"),
         ).props("dense round flat color=slate-200").classes("text-sm hover:bg-slate-800").tooltip("Rimpicciolisci (Zoom -)")
 
         ui.button(
             icon="crop_free",
-            on_click=lambda: ui.run_javascript("if(window.cadViewer) window.cadViewer.reset();"),
+            on_click=lambda: safe_run_javascript("if(window.cadViewer) window.cadViewer.reset();"),
         ).props("dense round flat color=cyan-400").classes("text-sm hover:bg-slate-800").tooltip("Adatta a Schermo (Fit)")
 
         ui.button(
             icon="restart_alt",
-            on_click=lambda: ui.run_javascript("if(window.cadViewer) window.cadViewer.reset();"),
+            on_click=lambda: safe_run_javascript("if(window.cadViewer) window.cadViewer.reset();"),
         ).props("dense round flat color=slate-400").classes("text-sm hover:bg-slate-800").tooltip("Ripristina Vista (Reset)")
 
     return hud
@@ -707,8 +724,10 @@ def _toggle_single_layer(
     is_visible: bool,
     callback: Optional[Callable[[str, bool], None]],
 ) -> None:
+    if getattr(state, "_bulk_updating", False):
+        return
     state.toggle_layer(layer_name, is_visible)
-    ui.run_javascript(
+    safe_run_javascript(
         f"if (window.cadViewer) window.cadViewer.toggleLayerVisibility('{clean_name}', {str(is_visible).lower()});"
     )
     if callback:
@@ -720,10 +739,14 @@ def _show_all_layers(
     checkbox_refs: Dict[str, ui.checkbox],
     callback: Optional[Callable[[str, bool], None]],
 ) -> None:
-    state.show_all_layers()
-    for cb in checkbox_refs.values():
-        cb.value = True
-    ui.run_javascript("if (window.cadViewer) window.cadViewer.showAllLayers();")
+    state._bulk_updating = True
+    try:
+        state.show_all_layers()
+        for cb in checkbox_refs.values():
+            cb.value = True
+    finally:
+        state._bulk_updating = False
+    safe_run_javascript("if (window.cadViewer) window.cadViewer.showAllLayers();")
     if callback:
         callback("*", True)
 
@@ -733,10 +756,14 @@ def _hide_all_layers(
     checkbox_refs: Dict[str, ui.checkbox],
     callback: Optional[Callable[[str, bool], None]],
 ) -> None:
-    state.hide_all_layers()
-    for cb in checkbox_refs.values():
-        cb.value = False
-    ui.run_javascript("if (window.cadViewer) window.cadViewer.hideAllLayers();")
+    state._bulk_updating = True
+    try:
+        state.hide_all_layers()
+        for cb in checkbox_refs.values():
+            cb.value = False
+    finally:
+        state._bulk_updating = False
+    safe_run_javascript("if (window.cadViewer) window.cadViewer.hideAllLayers();")
     if callback:
         callback("*", False)
 
@@ -755,18 +782,42 @@ def create_export_dialog(state: CadViewerState) -> ui.dialog:
         # Export Mode Selector
         ui.label("Seleziona Contenuto da Stampare:").classes("text-xs font-semibold text-slate-300 mt-2")
 
-        mode_options = {
+        initial_opts = {
             "all_tavole": "Tutte le 4 Tavole (PDF Multi-pagina ordinato)",
             "current": f"Tavola Corrente ({state.active_tavola})",
             "globale": "Disegno Completo (Vista Globale)",
         }
         if state.selected_bbox:
-            mode_options["custom"] = "Area Selezionata (Ritaglio rettangolare)"
+            initial_opts["custom"] = "Area Selezionata (Ritaglio rettangolare)"
+
+        initial_val = "custom" if state.selected_bbox else ("all_tavole" if state.active_tavola == "Globale" else "current")
 
         mode_radio = ui.radio(
-            options=mode_options,
-            value="all_tavole" if state.active_tavola == "Globale" else "current",
+            options=initial_opts,
+            value=initial_val,
         ).props("color=emerald-5 dark").classes("text-xs flex flex-col gap-1")
+
+        def refresh_options() -> None:
+            """Refresh export mode options and selection based on viewer state."""
+            opts = {
+                "all_tavole": "Tutte le 4 Tavole (PDF Multi-pagina ordinato)",
+                "current": f"Tavola Corrente ({state.active_tavola})",
+                "globale": "Disegno Completo (Vista Globale)",
+            }
+            if state.selected_bbox:
+                opts["custom"] = "Area Selezionata (Ritaglio rettangolare)"
+                mode_radio.options = opts
+                mode_radio.value = "custom"
+            else:
+                mode_radio.options = opts
+                if mode_radio.value == "custom":
+                    mode_radio.value = "all_tavole" if state.active_tavola == "Globale" else "current"
+
+        state.add_listener(refresh_options)
+        dialog.on("open", refresh_options)
+        dialog.refresh_options = refresh_options
+        dialog.mode_radio = mode_radio
+        state.export_dialog = dialog
 
         # Paper Size & Options
         with ui.row().classes("w-full items-center justify-between gap-4 mt-2 pt-3 border-t border-slate-800"):
