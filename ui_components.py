@@ -28,6 +28,7 @@ from renderer import sanitize_layer_name
 def safe_run_javascript(code: str, **kwargs: Any) -> None:
     """Execute JavaScript safely, ignoring errors when no active client or event loop is available."""
     try:
+        kwargs.setdefault("respond", False)
         if core.loop is not None:
             ui.run_javascript(code, **kwargs)
     except Exception:

@@ -1,4 +1,3 @@
-import os
 import pytest
 from nicegui.testing import User
 import main

@@ -20,7 +20,6 @@ from ui_components import (
     CadViewerState,
     create_canvas,
     create_export_dialog,
-    create_floating_hud,
     create_header,
     create_layer_drawer,
     create_upload_dialog,

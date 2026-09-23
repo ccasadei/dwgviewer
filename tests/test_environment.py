@@ -1,5 +1,3 @@
-import shutil
-
 def test_dependencies_importable():
     import ezdxf
     import nicegui
