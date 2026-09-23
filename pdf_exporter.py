@@ -89,8 +89,9 @@ def _setup_render_context_and_config(
     layout_props.set_colors("#ffffff", "#000000")
 
     if visible_layers is not None:
+        visible_set_lower = {name.lower() for name in visible_layers}
         for name, layer_prop in ctx.layers.items():
-            layer_prop.is_visible = name in visible_layers
+            layer_prop.is_visible = name.lower() in visible_set_lower
     else:
         for layer_prop in ctx.layers.values():
             layer_prop.is_visible = True

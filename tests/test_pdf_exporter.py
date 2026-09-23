@@ -126,3 +126,17 @@ def test_render_context_color_policy_and_lineweights():
     assert config.min_lineweight >= 0.18
     assert config.lineweight_scaling >= 1.0
     assert layout_props.background_color == "#ffffff"
+
+
+def test_render_context_visible_layers_case_insensitivity():
+    """Verify visible_layers matching is case-insensitive against ezdxf RenderContext lowercase keys."""
+    from pdf_exporter import _setup_render_context_and_config
+
+    model = load_cad_file("Tavole.dwg")
+    original_layer_names = [l.name for l in model.layers]  # contains 'TESTI', 'Muri', etc.
+    ctx, _, _ = _setup_render_context_and_config(model, visible_layers=original_layer_names)
+
+    # Every layer that exists in model should be marked visible in RenderContext
+    visible_count = sum(1 for p in ctx.layers.values() if p.is_visible)
+    assert visible_count == len(ctx.layers)
+

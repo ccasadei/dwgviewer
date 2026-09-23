@@ -28,7 +28,6 @@ from renderer import sanitize_layer_name
 def safe_run_javascript(code: str, **kwargs: Any) -> None:
     """Execute JavaScript safely, ignoring errors when no active client or event loop is available."""
     try:
-        kwargs.setdefault("respond", False)
         if core.loop is not None:
             ui.run_javascript(code, **kwargs)
     except Exception:
@@ -400,6 +399,7 @@ def create_header(
                     "text-xs font-medium px-3 py-1 transition-all rounded "
                     + ("text-white shadow-sm ring-1 ring-cyan-400" if is_active else "text-slate-300 hover:text-white")
                 )
+                btn.on("click", js_handler=f"() => {{ if (window.cadViewer) window.cadViewer.zoomToTavola('{key}'); }}")
                 chip_buttons[key] = btn
 
         # Right: Tools & Actions (Upload, Selection, Export PDF, Theme, Layers)
@@ -635,25 +635,29 @@ def create_floating_hud() -> ui.element:
     with ui.element("div").classes(
         "absolute bottom-4 right-4 z-20 flex flex-col gap-1 bg-slate-900/80 backdrop-blur-md p-1.5 rounded-lg border border-slate-700/80 shadow-xl ring-1 ring-white/10"
     ) as hud:
-        ui.button(
+        btn_add = ui.button(
             icon="add",
             on_click=lambda: safe_run_javascript("if(window.cadViewer) window.cadViewer.zoomIn();"),
         ).props("dense round flat color=slate-200").classes("text-sm hover:bg-slate-800").tooltip("Ingrandisci (Zoom +)")
+        btn_add.on("click", js_handler="() => { if(window.cadViewer) window.cadViewer.zoomIn(); }")
 
-        ui.button(
+        btn_sub = ui.button(
             icon="remove",
             on_click=lambda: safe_run_javascript("if(window.cadViewer) window.cadViewer.zoomOut();"),
         ).props("dense round flat color=slate-200").classes("text-sm hover:bg-slate-800").tooltip("Rimpicciolisci (Zoom -)")
+        btn_sub.on("click", js_handler="() => { if(window.cadViewer) window.cadViewer.zoomOut(); }")
 
-        ui.button(
+        btn_fit = ui.button(
             icon="crop_free",
             on_click=lambda: safe_run_javascript("if(window.cadViewer) window.cadViewer.reset();"),
         ).props("dense round flat color=cyan-400").classes("text-sm hover:bg-slate-800").tooltip("Adatta a Schermo (Fit)")
+        btn_fit.on("click", js_handler="() => { if(window.cadViewer) window.cadViewer.reset(); }")
 
-        ui.button(
+        btn_reset = ui.button(
             icon="restart_alt",
             on_click=lambda: safe_run_javascript("if(window.cadViewer) window.cadViewer.reset();"),
         ).props("dense round flat color=slate-400").classes("text-sm hover:bg-slate-800").tooltip("Ripristina Vista (Reset)")
+        btn_reset.on("click", js_handler="() => { if(window.cadViewer) window.cadViewer.reset(); }")
 
     return hud
 
@@ -756,8 +760,9 @@ def _toggle_single_layer(
     if getattr(state, "_bulk_updating", False):
         return
     state.toggle_layer(layer_name, is_visible)
+    js_name = json.dumps(layer_name)
     safe_run_javascript(
-        f"if (window.cadViewer) window.cadViewer.toggleLayerVisibility('{clean_name}', {str(is_visible).lower()});"
+        f"if (window.cadViewer) window.cadViewer.toggleLayerVisibility({js_name}, {str(is_visible).lower()});"
     )
     if callback:
         callback(layer_name, is_visible)

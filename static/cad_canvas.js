@@ -180,38 +180,56 @@
 
     setTheme: function(isDark) {
       const vp = document.getElementById('cad-viewport');
-      if (!vp) return;
+      const svg = document.getElementById('cad-svg') || (vp ? vp.querySelector('svg') : null);
       if (isDark) {
-        vp.classList.remove('theme-light');
-        vp.style.backgroundColor = '#12151b';
+        document.body.style.backgroundColor = '#12151b';
+        if (vp) {
+          vp.classList.remove('theme-light');
+          vp.style.backgroundColor = '#12151b';
+        }
+        if (svg) {
+          svg.style.backgroundColor = '#12151b';
+          svg.style.filter = '';
+        }
       } else {
-        vp.classList.add('theme-light');
-        vp.style.backgroundColor = '#f1f5f9';
+        document.body.style.backgroundColor = '#f8fafc';
+        if (vp) {
+          vp.classList.add('theme-light');
+          vp.style.backgroundColor = '#f8fafc';
+        }
+        if (svg) {
+          svg.style.backgroundColor = '#f8fafc';
+          svg.style.filter = 'invert(1) hue-rotate(180deg)';
+        }
       }
     },
 
-    toggleLayerVisibility: function(cleanName, isVisible) {
-      // 1. Direct DOM manipulation on matching layer groups
-      const selector = `.layer-${cleanName}, [data-layer="${cleanName}"]`;
-      const elements = document.querySelectorAll(selector);
-      elements.forEach(function(el) {
-        if (isVisible) {
-          el.classList.remove('hidden');
-          el.style.display = '';
-        } else {
-          el.classList.add('hidden');
-          el.style.display = 'none';
+    toggleLayerVisibility: function(name, isVisible) {
+      const target = (name || '').trim().toLowerCase();
+      const clean = target.replace(/[^a-z0-9_-]/g, '_');
+      const layers = document.querySelectorAll('.cad-layer');
+      layers.forEach(function(el) {
+        const layerAttr = (el.getAttribute('data-layer') || '').trim().toLowerCase();
+        const classNames = (el.getAttribute('class') || '').toLowerCase();
+        if (layerAttr === target || classNames.includes('layer-' + clean) || classNames.includes('layer-' + target)) {
+          if (isVisible) {
+            el.classList.remove('hidden');
+            el.style.display = '';
+          } else {
+            el.classList.add('hidden');
+            el.style.display = 'none';
+          }
         }
       });
 
-      // 2. Dynamic stylesheet rule fallback
+      // Dynamic stylesheet rule fallback
       let styleTag = document.getElementById('cad-dynamic-layer-styles');
       if (!styleTag) {
         styleTag = document.createElement('style');
         styleTag.id = 'cad-dynamic-layer-styles';
         document.head.appendChild(styleTag);
       }
-      const rule = `.layer-${cleanName} { display: none !important; }`;
+      const rule = `.layer-${clean} { display: none !important; }`;
       let text = styleTag.textContent || '';
       if (!isVisible) {
         if (!text.includes(rule)) {

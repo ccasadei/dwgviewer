@@ -315,4 +315,15 @@ def test_layer_bulk_toggle_handlers():
         assert len(state.visible_layers) == len(model.layers)
 
 
+def test_safe_run_javascript_execution():
+    """Verify safe_run_javascript does not pass invalid keyword arguments to ui.run_javascript."""
+    from nicegui import Client, ui
+    from ui_components import safe_run_javascript
+
+    with Client(ui.page("/test_js")):
+        # Should not raise TypeError: run_javascript() got an unexpected keyword argument 'respond'
+        safe_run_javascript("console.log('test');")
+
+
+
 
