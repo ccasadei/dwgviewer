@@ -9,6 +9,7 @@ Provides NiceGUI-based CAD workspace with:
 - Vector PDF export dialog with multi-page collation, single sheet, and custom selection
 """
 
+import inspect
 import json
 import os
 import re
@@ -23,6 +24,51 @@ from pdf_exporter import (
     export_tavola_to_pdf,
 )
 from renderer import sanitize_layer_name
+
+
+async def save_uploaded_file(e: Any, upload_dir: str = ".cache/uploads") -> str:
+    """Safely extract filename and save uploaded CAD file across NiceGUI versions.
+
+    Args:
+        e: NiceGUI UploadEventArguments or event-like object.
+        upload_dir: Destination directory for uploaded CAD files.
+
+    Returns:
+        Absolute path to the saved file.
+
+    Raises:
+        ValueError: If file format is not .dwg or .dxf.
+    """
+    file_obj = getattr(e, "file", e)
+    filename = getattr(file_obj, "name", None) or getattr(e, "name", "uploaded_file.dwg")
+    clean_name = os.path.basename(filename)
+    ext = os.path.splitext(clean_name)[1].lower()
+    if ext not in (".dwg", ".dxf"):
+        raise ValueError(f"Estensione '{ext}' non supportata. Seleziona un file .dwg o .dxf")
+
+    os.makedirs(upload_dir, exist_ok=True)
+    saved_path = os.path.abspath(os.path.join(upload_dir, clean_name))
+
+    if hasattr(file_obj, "save"):
+        res = file_obj.save(saved_path)
+        if inspect.isawaitable(res):
+            await res
+    elif hasattr(file_obj, "read"):
+        data = file_obj.read()
+        if inspect.isawaitable(data):
+            data = await data
+        with open(saved_path, "wb") as f:
+            f.write(data)
+    elif hasattr(e, "content"):
+        content = e.content.read() if hasattr(e.content, "read") else e.content
+        if inspect.isawaitable(content):
+            content = await content
+        with open(saved_path, "wb") as f:
+            f.write(content)
+    else:
+        raise ValueError("Impossibile estrarre il contenuto del file caricato")
+
+    return saved_path
 
 
 def safe_run_javascript(code: str, **kwargs: Any) -> None:
@@ -914,27 +960,18 @@ def create_upload_dialog(
         status_label = ui.label("").classes("text-xs font-mono text-cyan-400 min-h-[1.2rem]")
 
         async def _handle_upload(e: Any) -> None:
-            filename = os.path.basename(e.name)
-            ext = os.path.splitext(filename)[1].lower()
-            if ext not in (".dwg", ".dxf"):
-                ui.notify(f"Estensione non supportata: {ext}. Seleziona un file .dwg o .dxf", type="negative")
-                status_label.text = f"Errore: formato {ext} non supportato"
-                return
+            try:
+                saved_path = await save_uploaded_file(e)
+                filename = os.path.basename(saved_path)
+                status_label.text = f"File {filename} caricato con successo!"
+                ui.notify(f"File {filename} caricato!", type="positive")
+                dialog.close()
 
-            upload_dir = os.path.join(".cache", "uploads")
-            os.makedirs(upload_dir, exist_ok=True)
-            saved_path = os.path.join(upload_dir, filename)
-
-            content = e.content.read() if hasattr(e.content, "read") else e.content
-            with open(saved_path, "wb") as f:
-                f.write(content)
-
-            status_label.text = f"File {filename} caricato con successo!"
-            ui.notify(f"File {filename} caricato!", type="positive")
-            dialog.close()
-
-            if on_file_loaded:
-                on_file_loaded(saved_path)
+                if on_file_loaded:
+                    on_file_loaded(saved_path)
+            except Exception as err:
+                status_label.text = f"Errore: {err}"
+                ui.notify(f"Errore caricamento: {err}", type="negative")
 
         ui.upload(
             label="Carica file DWG / DXF",

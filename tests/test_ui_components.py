@@ -325,5 +325,28 @@ def test_safe_run_javascript_execution():
         safe_run_javascript("console.log('test');")
 
 
+@pytest.mark.asyncio
+async def test_save_uploaded_file():
+    """Verify save_uploaded_file extracts filename and saves bytes properly."""
+    from nicegui.elements.upload_files import SmallFileUpload
+    from nicegui.events import UploadEventArguments
+    from ui_components import save_uploaded_file
+
+    file_item = SmallFileUpload("my_custom_plan.dxf", "application/dxf", b"DXF_TEST_DATA")
+    event = UploadEventArguments(file=file_item, sender=None, client=None)
+    saved = await save_uploaded_file(event, upload_dir=".cache/test_uploads")
+    try:
+        assert os.path.exists(saved)
+        assert os.path.basename(saved) == "my_custom_plan.dxf"
+        with open(saved, "rb") as f:
+            assert f.read() == b"DXF_TEST_DATA"
+    finally:
+        if os.path.exists(saved):
+            os.remove(saved)
+        if os.path.exists(".cache/test_uploads"):
+            os.rmdir(".cache/test_uploads")
+
+
+
 
 

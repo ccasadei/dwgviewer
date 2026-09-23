@@ -12,6 +12,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
+from urllib.parse import quote
+
 from nicegui import app, ui
 
 from cad_engine import CadModel, load_cad_file
@@ -23,6 +25,7 @@ from ui_components import (
     create_header,
     create_layer_drawer,
     create_upload_dialog,
+    save_uploaded_file,
 )
 
 # Global in-memory cache for parsed CadModel instances to speed up page loads and testing
@@ -124,7 +127,7 @@ def index_page(file: Optional[str] = None) -> None:
         ui.page_title("CAD DWG Viewer - Seleziona File")
 
         upload_dialog = create_upload_dialog(
-            on_file_loaded=lambda p: ui.navigate.to(f"/?file={p}")
+            on_file_loaded=lambda p: ui.navigate.to(f"/?file={quote(p)}")
         )
 
         with ui.header().classes(
@@ -155,15 +158,13 @@ def index_page(file: Optional[str] = None) -> None:
             ).classes("text-sm text-slate-400 mt-1 max-w-md")
 
             async def _handle_direct_upload(e: Any) -> None:
-                clean_name = os.path.basename(e.name)
-                upload_dir = os.path.join(".cache", "uploads")
-                os.makedirs(upload_dir, exist_ok=True)
-                saved_path = os.path.join(upload_dir, clean_name)
-                content = e.content.read() if hasattr(e.content, "read") else e.content
-                with open(saved_path, "wb") as f:
-                    f.write(content)
-                ui.notify(f"File {clean_name} caricato con successo!", type="positive")
-                ui.navigate.to(f"/?file={saved_path}")
+                try:
+                    saved_path = await save_uploaded_file(e)
+                    clean_name = os.path.basename(saved_path)
+                    ui.notify(f"File {clean_name} caricato con successo!", type="positive")
+                    ui.navigate.to(f"/?file={quote(saved_path)}")
+                except Exception as upload_err:
+                    ui.notify(f"Errore caricamento: {upload_err}", type="negative")
 
             ui.upload(
                 label="Carica file DWG / DXF",
@@ -186,7 +187,7 @@ def index_page(file: Optional[str] = None) -> None:
     except Exception as err:
         # Graceful error state with error banner, notification, and dynamic upload interface
         upload_dialog = create_upload_dialog(
-            on_file_loaded=lambda p: ui.navigate.to(f"/?file={p}")
+            on_file_loaded=lambda p: ui.navigate.to(f"/?file={quote(p)}")
         )
 
         with ui.header().classes(
@@ -220,15 +221,13 @@ def index_page(file: Optional[str] = None) -> None:
             )
 
             async def _handle_direct_upload(e: Any) -> None:
-                clean_name = os.path.basename(e.name)
-                upload_dir = os.path.join(".cache", "uploads")
-                os.makedirs(upload_dir, exist_ok=True)
-                saved_path = os.path.join(upload_dir, clean_name)
-                content = e.content.read() if hasattr(e.content, "read") else e.content
-                with open(saved_path, "wb") as f:
-                    f.write(content)
-                ui.notify(f"File {clean_name} caricato con successo!", type="positive")
-                ui.navigate.to(f"/?file={saved_path}")
+                try:
+                    saved_path = await save_uploaded_file(e)
+                    clean_name = os.path.basename(saved_path)
+                    ui.notify(f"File {clean_name} caricato con successo!", type="positive")
+                    ui.navigate.to(f"/?file={quote(saved_path)}")
+                except Exception as upload_err:
+                    ui.notify(f"Errore caricamento: {upload_err}", type="negative")
 
             ui.upload(
                 label="Carica file DWG / DXF",
@@ -243,7 +242,7 @@ def index_page(file: Optional[str] = None) -> None:
     # 2. Render normal CAD viewer workspace
     export_dialog = create_export_dialog(state)
     upload_dialog = create_upload_dialog(
-        on_file_loaded=lambda p: ui.navigate.to(f"/?file={p}")
+        on_file_loaded=lambda p: ui.navigate.to(f"/?file={quote(p)}")
     )
     dark_mode = ui.dark_mode(value=state.dark_mode)
 
