@@ -46,19 +46,19 @@ def test_tavole_definitions():
     # Verify Tavola titles and coordinate bounds
     t1 = model.tavole["Tavola 1"]
     assert "Prospetti" in t1.title
-    assert t1.bbox == (3670.0, 1715.0, 3935.0, 1760.0)
+    assert t1.bbox == (3678.5, 1724.0, 3910.5, 1755.0)
 
     t2 = model.tavole["Tavola 2"]
     assert "Planimetria" in t2.title
-    assert t2.bbox == (3670.0, 1665.0, 3935.0, 1715.0)
+    assert t2.bbox == (3678.5, 1673.5, 3928.0, 1717.0)
 
     t3 = model.tavole["Tavola 3"]
     assert "Variante" in t3.title
-    assert t3.bbox == (3670.0, 1605.0, 3935.0, 1665.0)
+    assert t3.bbox == (3678.5, 1624.0, 3928.0, 1667.2)
 
     t4 = model.tavole["Tavola 4"]
     assert "Servoscala" in t4.title
-    assert t4.bbox == (3670.0, 1530.0, 3935.0, 1605.0)
+    assert t4.bbox == (3677.0, 1535.8, 3759.0, 1579.2)
 
     tg = model.tavole["Globale"]
     # Globale must encompass full extents with 2% margin

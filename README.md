@@ -47,12 +47,6 @@ Pulsanti rapidi nell'header per passare istantaneamente tra le sezioni del proge
 - **Pillole di Colore & Statistiche**: indicatore visivo del colore originale AutoCAD (ACI) e badge con il conteggio delle entità grafiche per ciascun livello.
 - **Pulsanti Globali**: *Mostra Tutti* e *Nascondi Tutti* in un solo click.
 
-### 📐 Selezione Riquadro (Area Marquee)
-- Attivando la modalità **"Seleziona Riquadro"**, è possibile trascinare una finestra rettangolare su qualunque dettaglio del disegno.
-- Calcolo automatico della bounding box nelle coordinate del modello CAD reale.
-- Popup contestuale immediato con opzioni:
-  - **Zoom**: ingrandisce la vista direttamente sull'area selezionata.
-  - **Stampa PDF**: apre il dialogo di stampa pre-impostato per esportare solo l'area selezionata in PDF vettoriale.
 
 ### 🖨️ Esportazione PDF Vettoriale Professionale
 - **PDF 100% Vettoriale**: linee, testi e geometrie mantengono nitidezza perfetta a qualsiasi livello di ingrandimento.

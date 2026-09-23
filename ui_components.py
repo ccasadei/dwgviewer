@@ -413,18 +413,6 @@ def create_header(
                 "text-xs rounded text-cyan-300 hover:text-white"
             ).tooltip("Carica file DWG o DXF")
 
-            # Area Selection Marquee Toggle
-            sel_btn = (
-                ui.button(
-                    "Seleziona Riquadro",
-                    icon="crop_free",
-                    on_click=lambda: _toggle_selection_mode(state, sel_btn, on_selection_toggle),
-                )
-                .props("dense no-caps outline color=slate-400")
-                .classes("text-xs transition-colors rounded")
-                .tooltip("Trascina un rettangolo sul disegno per zoomare o stampare in PDF")
-            )
-
             # PDF Export Dialog Trigger Button
             ui.button(
                 "Stampa / PDF",

@@ -152,12 +152,12 @@ def load_cad_file(file_path: str, cache_dir: str = ".cache") -> CadModel:
 
     tavole: dict[str, TavolaInfo] = {}
 
-    # Standard Tavole definitions
+    # Standard Tavole definitions with exact sheet frame perimeters
     tavole_specs = [
-        ("Tavola 1", "Tavola 1 - Prospetti, Sezioni e Copertura", (3670.0, 1715.0, 3935.0, 1760.0)),
-        ("Tavola 2", "Tavola 2 - Planimetria 1:2000 e Stato di Fatto", (3670.0, 1665.0, 3935.0, 1715.0)),
-        ("Tavola 3", "Tavola 3 - Variante, Demolizioni e Costruzioni", (3670.0, 1605.0, 3935.0, 1665.0)),
-        ("Tavola 4", "Tavola 4 - Inserimento Servoscala e Abbattimento Barriere", (3670.0, 1530.0, 3935.0, 1605.0)),
+        ("Tavola 1", "Tavola 1 - Prospetti, Sezioni e Copertura", (3678.5, 1724.0, 3910.5, 1755.0)),
+        ("Tavola 2", "Tavola 2 - Planimetria 1:2000 e Stato di Fatto", (3678.5, 1673.5, 3928.0, 1717.0)),
+        ("Tavola 3", "Tavola 3 - Variante, Demolizioni e Costruzioni", (3678.5, 1624.0, 3928.0, 1667.2)),
+        ("Tavola 4", "Tavola 4 - Inserimento Servoscala e Abbattimento Barriere", (3677.0, 1535.8, 3759.0, 1579.2)),
     ]
 
     is_tavole_doc = "tavole" in os.path.basename(file_path).lower() or (
