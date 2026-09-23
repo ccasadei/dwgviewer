@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import subprocess
 from collections import Counter
@@ -92,6 +93,18 @@ def convert_dwg_to_dxf(dwg_path: str, cache_dir: str = ".cache") -> str:
 
     if not os.path.exists(cached_dxf):
         raise FileNotFoundError(f"Converted DXF file not found at {cached_dxf}")
+
+    # Fix any invalid handle 0 in converted DXF emitted by LibreDWG
+    try:
+        with open(cached_dxf, "r", encoding="utf-8", errors="ignore") as f:
+            dxf_text = f.read()
+        if "\n0\n" in dxf_text:
+            fixed_text = re.sub(r"(\n\s*5\n)0(\n)", r"\g<1>FFFF\2", dxf_text)
+            if fixed_text != dxf_text:
+                with open(cached_dxf, "w", encoding="utf-8") as f:
+                    f.write(fixed_text)
+    except Exception:
+        pass
 
     return cached_dxf
 
