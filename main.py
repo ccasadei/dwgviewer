@@ -163,13 +163,14 @@ def index_page(file: Optional[str] = None) -> None:
             )
 
             async def _handle_direct_upload(e: Any) -> None:
+                clean_name = os.path.basename(e.name)
                 upload_dir = os.path.join(".cache", "uploads")
                 os.makedirs(upload_dir, exist_ok=True)
-                saved_path = os.path.join(upload_dir, e.name)
+                saved_path = os.path.join(upload_dir, clean_name)
                 content = e.content.read() if hasattr(e.content, "read") else e.content
                 with open(saved_path, "wb") as f:
                     f.write(content)
-                ui.notify(f"File {e.name} caricato con successo!", type="positive")
+                ui.notify(f"File {clean_name} caricato con successo!", type="positive")
                 ui.navigate.to(f"/?file={saved_path}")
 
             ui.upload(

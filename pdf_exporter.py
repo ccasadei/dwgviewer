@@ -146,26 +146,27 @@ def export_custom_bbox_to_pdf(
     fig_w, fig_h, (left, bottom, w, h) = calculate_page_geometry(bbox, paper_size=paper_size)
 
     fig = plt.figure(figsize=(fig_w, fig_h))
-    fig.patch.set_facecolor("#ffffff")
-    ax = fig.add_axes([left, bottom, w, h])
-    ax.set_facecolor("#ffffff")
+    try:
+        fig.patch.set_facecolor("#ffffff")
+        ax = fig.add_axes([left, bottom, w, h])
+        ax.set_facecolor("#ffffff")
 
-    layers_set = set(visible_layers) if visible_layers is not None else None
-    ctx, config, layout_props = _setup_render_context_and_config(cad_model, layers_set)
+        layers_set = set(visible_layers) if visible_layers is not None else None
+        ctx, config, layout_props = _setup_render_context_and_config(cad_model, layers_set)
 
-    backend = MatplotlibBackend(ax, adjust_figure=False)
-    frontend = Frontend(ctx, backend, config=config)
+        backend = MatplotlibBackend(ax, adjust_figure=False)
+        frontend = Frontend(ctx, backend, config=config)
 
-    msp = cad_model.dxf_doc.modelspace()
-    frontend.draw_layout(msp, finalize=False, layout_properties=layout_props)
+        msp = cad_model.dxf_doc.modelspace()
+        frontend.draw_layout(msp, finalize=False, layout_properties=layout_props)
 
-    _apply_bbox_to_axes(ax, bbox, title=title)
+        _apply_bbox_to_axes(ax, bbox, title=title)
 
-    metadata = {"Title": title} if title else None
-    fig.savefig(output_path, format="pdf", facecolor="#ffffff", edgecolor="none", metadata=metadata)
-    plt.close(fig)
-
-    return output_path
+        metadata = {"Title": title} if title else None
+        fig.savefig(output_path, format="pdf", facecolor="#ffffff", edgecolor="none", metadata=metadata)
+        return output_path
+    finally:
+        plt.close(fig)
 
 
 def export_tavola_to_pdf(
@@ -200,34 +201,14 @@ def export_tavola_to_pdf(
             f"Tavola '{tavola_key}' not found in CadModel. Available tavole: {list(cad_model.tavole.keys())}"
         )
 
-    # For standard Tavole, drawing geometry contains title block; keep title purely in metadata
-    output_dir = os.path.dirname(os.path.abspath(output_path))
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-
-    fig_w, fig_h, (left, bottom, w, h) = calculate_page_geometry(tavola.bbox, paper_size=paper_size)
-
-    fig = plt.figure(figsize=(fig_w, fig_h))
-    fig.patch.set_facecolor("#ffffff")
-    ax = fig.add_axes([left, bottom, w, h])
-    ax.set_facecolor("#ffffff")
-
-    layers_set = set(visible_layers) if visible_layers is not None else None
-    ctx, config, layout_props = _setup_render_context_and_config(cad_model, layers_set)
-
-    backend = MatplotlibBackend(ax, adjust_figure=False)
-    frontend = Frontend(ctx, backend, config=config)
-
-    msp = cad_model.dxf_doc.modelspace()
-    frontend.draw_layout(msp, finalize=False, layout_properties=layout_props)
-
-    _apply_bbox_to_axes(ax, tavola.bbox, title="")
-
-    metadata = {"Title": tavola.title or tavola.name}
-    fig.savefig(output_path, format="pdf", facecolor="#ffffff", edgecolor="none", metadata=metadata)
-    plt.close(fig)
-
-    return output_path
+    return export_custom_bbox_to_pdf(
+        cad_model=cad_model,
+        bbox=tavola.bbox,
+        output_path=output_path,
+        paper_size=paper_size,
+        title=tavola.title or tavola.name,
+        visible_layers=visible_layers,
+    )
 
 
 def export_all_tavole_multipage_pdf(
@@ -260,6 +241,8 @@ def export_all_tavole_multipage_pdf(
         available_keys = [k for k in cad_model.tavole.keys() if k != "Globale"]
     if not available_keys:
         available_keys = list(cad_model.tavole.keys())
+    if not available_keys:
+        raise ValueError("No tavole found to export in CadModel")
 
     layers_set = set(visible_layers) if visible_layers is not None else None
     ctx, config, layout_props = _setup_render_context_and_config(cad_model, layers_set)

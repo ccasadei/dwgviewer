@@ -108,7 +108,7 @@ class LayerTaggedSVGRenderBackend(SVGRenderBackend):
     def get_or_create_layer_group(self, layer_name: str) -> ET.Element:
         """Retrieve existing or create new <g> group for the specified layer."""
         clean_name = sanitize_layer_name(layer_name)
-        if clean_name not in self.layer_groups:
+        if layer_name not in self.layer_groups:
             group = ET.SubElement(
                 self.entities,
                 "g",
@@ -117,8 +117,8 @@ class LayerTaggedSVGRenderBackend(SVGRenderBackend):
                     "data-layer": layer_name,
                 },
             )
-            self.layer_groups[clean_name] = group
-        return self.layer_groups[clean_name]
+            self.layer_groups[layer_name] = group
+        return self.layer_groups[layer_name]
 
     def add_strokes(self, d: str, properties: BackendProperties) -> None:
         """Add stroked path inside the entity's layer group."""

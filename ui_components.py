@@ -344,12 +344,7 @@ class CadViewerState:
             raise ValueError(f"Unknown PDF export mode: {mode}")
 
 
-# Ensure static directory is mounted if available
-if os.path.isdir("static"):
-    try:
-        app.add_static_files("/static", "static")
-    except Exception:
-        pass
+
 
 
 def inject_panzoom_head_scripts() -> None:
@@ -903,7 +898,7 @@ def create_upload_dialog(
         status_label = ui.label("").classes("text-xs font-mono text-cyan-400 min-h-[1.2rem]")
 
         async def _handle_upload(e: Any) -> None:
-            filename = e.name
+            filename = os.path.basename(e.name)
             ext = os.path.splitext(filename)[1].lower()
             if ext not in (".dwg", ".dxf"):
                 ui.notify(f"Estensione non supportata: {ext}. Seleziona un file .dwg o .dxf", type="negative")
