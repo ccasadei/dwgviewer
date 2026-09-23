@@ -28,8 +28,8 @@ from ui_components import (
 # Global in-memory cache for parsed CadModel instances to speed up page loads and testing
 _MODEL_CACHE: Dict[str, Tuple[float, CadModel]] = {}
 
-# Default CAD file to load
-DEFAULT_FILE: str = "./Tavole.dwg"
+# Default CAD file to load (None by default to prompt file selection on launch)
+DEFAULT_FILE: Optional[str] = None
 
 # Mount static asset directory for Panzoom and CAD helper scripts
 _STATIC_DIR = Path(__file__).parent / "static"
@@ -81,8 +81,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--file",
         type=str,
-        default="./Tavole.dwg",
-        help="Percorso del file CAD (.dwg o .dxf) da visualizzare (default: ./Tavole.dwg)",
+        default=None,
+        help="Percorso del file CAD (.dwg o .dxf) da visualizzare (default: None, apre selezione file all'avvio)",
     )
     parser.add_argument(
         "--port",
@@ -119,6 +119,63 @@ def index_page(file: Optional[str] = None) -> None:
     # Configure dark mode and CAD page layout styling
     ui.dark_mode().enable()
     ui.query("body").classes("bg-[#12151b] text-slate-100 overflow-hidden m-0 p-0 select-none")
+    # Initial state: No CAD file specified - prompt file selection immediately
+    if not target_file:
+        ui.page_title("CAD DWG Viewer - Seleziona File")
+
+        upload_dialog = create_upload_dialog(
+            on_file_loaded=lambda p: ui.navigate.to(f"/?file={p}")
+        )
+
+        with ui.header().classes(
+            "bg-slate-900 border-b border-slate-800 text-white px-4 py-2 flex items-center justify-between shadow-md z-30"
+        ):
+            with ui.row().classes("items-center gap-3"):
+                ui.icon("architecture", size="md").classes("text-cyan-400")
+                ui.label("CAD DWG Viewer").classes("text-sm font-bold tracking-wider uppercase text-slate-100")
+                ui.badge("Nessun file aperto", color="slate-800").classes(
+                    "text-xs text-slate-400 font-mono px-2 py-0.5 border border-slate-700"
+                )
+
+            ui.button(
+                "Carica",
+                icon="upload_file",
+                on_click=upload_dialog.open,
+            ).props("dense no-caps color=cyan-7").classes(
+                "text-xs font-semibold px-3 py-1 text-white shadow-sm rounded"
+            ).tooltip("Seleziona o carica file DWG / DXF")
+
+        with ui.column().classes(
+            "w-full max-w-xl mx-auto my-16 p-8 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl items-center text-center gap-4"
+        ):
+            ui.icon("folder_open", size="xl").classes("text-cyan-400")
+            ui.label("Benvenuto nel CAD DWG Viewer").classes("text-xl font-bold text-slate-100")
+            ui.label(
+                "Nessun disegno CAD caricato. Seleziona o trascina un file DWG o DXF per iniziare la visualizzazione:"
+            ).classes("text-sm text-slate-400 mt-1 max-w-md")
+
+            async def _handle_direct_upload(e: Any) -> None:
+                clean_name = os.path.basename(e.name)
+                upload_dir = os.path.join(".cache", "uploads")
+                os.makedirs(upload_dir, exist_ok=True)
+                saved_path = os.path.join(upload_dir, clean_name)
+                content = e.content.read() if hasattr(e.content, "read") else e.content
+                with open(saved_path, "wb") as f:
+                    f.write(content)
+                ui.notify(f"File {clean_name} caricato con successo!", type="positive")
+                ui.navigate.to(f"/?file={saved_path}")
+
+            ui.upload(
+                label="Carica file DWG / DXF",
+                auto_upload=True,
+                max_files=1,
+                on_upload=_handle_direct_upload,
+            ).props('accept=".dwg,.dxf" color=cyan-6 dark').classes("w-full")
+
+
+        upload_dialog.open()
+        return
+
     ui.page_title(f"CAD DWG Viewer - {os.path.basename(target_file)}")
 
     # 1. Attempt loading and rendering CAD model

@@ -943,6 +943,7 @@ def create_upload_dialog(
             on_upload=_handle_upload,
         ).props('accept=".dwg,.dxf" color=cyan-6 dark').classes("w-full")
 
+
         with ui.row().classes("w-full justify-end mt-4"):
             ui.button("Chiudi", on_click=dialog.close).props("dense flat color=slate-400").classes("text-xs")
 

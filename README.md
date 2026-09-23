@@ -89,19 +89,20 @@ uv sync
 ```
 
 ### 3. Avvio dell'applicazione
-Avvia il server web caricando il file predefinito (`Tavole.dwg`):
+Avvia il server web:
 ```bash
 uv run python main.py
 ```
 
-L'applicazione sarà accessibile nel browser all'indirizzo:  
+All'avvio, l'applicazione mostrerà automaticamente la finestra di dialogo per selezionare o caricare il file DWG o DXF desiderato.
+L'interfaccia è accessibile nel browser all'indirizzo:  
 👉 **`http://localhost:8080`** (o `http://127.0.0.1:8080`)
 
 ---
 
 ## ⚙️ Opzioni da Riga di Comando (CLI)
 
-Il visualizzatore accetta parametri opzionali per configurare file di avvio, rete e modalità desktop:
+Il visualizzatore accetta parametri opzionali per specificare direttamente un file di avvio, porta di rete e modalità desktop:
 
 ```bash
 uv run python main.py [OPZIONI]
@@ -109,7 +110,7 @@ uv run python main.py [OPZIONI]
 
 | Parametro | Descrizione | Default |
 | :--- | :--- | :--- |
-| `--file FILE` | Percorso del file `.dwg` o `.dxf` da aprire all'avvio | `./Tavole.dwg` |
+| `--file FILE` | Percorso del file `.dwg` o `.dxf` da aprire all'avvio | `None` *(apre dialogo di selezione)* |
 | `--port PORT` | Porta TCP di ascolto del server web | `8080` |
 | `--host HOST` | Indirizzo host su cui effettuare il bind | `0.0.0.0` |
 | `--reload` | Attiva il ricaricamento automatico al salvataggio (sviluppo) | `False` |

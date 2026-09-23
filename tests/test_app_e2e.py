@@ -5,8 +5,8 @@ import main
 
 @pytest.mark.asyncio
 async def test_app_loads_and_displays_canvas(user: User):
-    """Verify that opening the home page loads Tavole.dwg and displays CAD workspace UI."""
-    await user.open("/")
+    """Verify that opening with ?file=Tavole.dwg loads the drawing and displays CAD workspace UI."""
+    await user.open("/?file=Tavole.dwg")
     # Verify header title/filename badge
     await user.should_see("Tavole.dwg")
     # Verify Tavole chips are visible
@@ -16,11 +16,20 @@ async def test_app_loads_and_displays_canvas(user: User):
     await user.should_see("Stampa / PDF")
 
 
+@pytest.mark.asyncio
+async def test_app_first_launch_prompts_file_selection(user: User):
+    """Verify that opening the home page without a file prompts file selection dialog."""
+    await user.open("/")
+    await user.should_see("Carica File CAD")
+    await user.should_see("Nessun file aperto")
+    await user.should_see("Carica file DWG / DXF")
+
+
 def test_cli_argument_parsing():
     """Verify that CLI parser parses defaults and custom options correctly."""
     parser = main.build_parser()
     args = parser.parse_args([])
-    assert args.file == "./Tavole.dwg"
+    assert args.file is None
     assert args.port == 8080
     assert args.host == "0.0.0.0"
     assert args.reload is False
