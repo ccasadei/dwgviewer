@@ -367,6 +367,7 @@ def create_header(
     on_drawer_toggle: Optional[Callable[[], None]] = None,
     on_selection_toggle: Optional[Callable[[bool], None]] = None,
     on_theme_toggle: Optional[Callable[[], None]] = None,
+    on_upload_click: Optional[Callable[[], None]] = None,
 ) -> Tuple[ui.header, Dict[str, ui.button]]:
     """Build modern dark CAD header bar with Tavole chips, export triggers, and layer toggle."""
     chip_buttons: Dict[str, ui.button] = {}
@@ -404,8 +405,17 @@ def create_header(
                 )
                 chip_buttons[key] = btn
 
-        # Right: Tools & Actions (Selection, Export PDF, Theme, Layers)
+        # Right: Tools & Actions (Upload, Selection, Export PDF, Theme, Layers)
         with ui.row().classes("items-center gap-2"):
+            # File Upload Dialog Trigger Button
+            ui.button(
+                "Carica",
+                icon="upload_file",
+                on_click=on_upload_click,
+            ).props("dense no-caps outline color=cyan-400").classes(
+                "text-xs rounded text-cyan-300 hover:text-white"
+            ).tooltip("Carica file DWG o DXF")
+
             # Area Selection Marquee Toggle
             sel_btn = (
                 ui.button(
@@ -872,3 +882,57 @@ def create_export_dialog(state: CadViewerState) -> ui.dialog:
             )
 
     return dialog
+
+
+def create_upload_dialog(
+    on_file_loaded: Optional[Callable[[str], None]] = None,
+) -> ui.dialog:
+    """Build modal dialog for uploading and loading new CAD DWG/DXF files."""
+    with ui.dialog() as dialog, ui.card().classes(
+        "bg-slate-900 text-slate-100 p-6 rounded-xl border border-slate-800 shadow-2xl max-w-md w-full"
+    ):
+        with ui.row().classes("items-center justify-between w-full pb-3 border-b border-slate-800"):
+            with ui.row().classes("items-center gap-2"):
+                ui.icon("upload_file", size="md").classes("text-cyan-400")
+                ui.label("Carica File CAD").classes("font-bold text-base tracking-wide text-white")
+            ui.button(icon="close", on_click=dialog.close).props("dense round flat color=slate-400")
+
+        ui.label("Seleziona o trascina un file DWG o DXF:").classes("text-xs text-slate-300 mt-2")
+
+        status_label = ui.label("").classes("text-xs font-mono text-cyan-400 min-h-[1.2rem]")
+
+        async def _handle_upload(e: Any) -> None:
+            filename = e.name
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in (".dwg", ".dxf"):
+                ui.notify(f"Estensione non supportata: {ext}. Seleziona un file .dwg o .dxf", type="negative")
+                status_label.text = f"Errore: formato {ext} non supportato"
+                return
+
+            upload_dir = os.path.join(".cache", "uploads")
+            os.makedirs(upload_dir, exist_ok=True)
+            saved_path = os.path.join(upload_dir, filename)
+
+            content = e.content.read() if hasattr(e.content, "read") else e.content
+            with open(saved_path, "wb") as f:
+                f.write(content)
+
+            status_label.text = f"File {filename} caricato con successo!"
+            ui.notify(f"File {filename} caricato!", type="positive")
+            dialog.close()
+
+            if on_file_loaded:
+                on_file_loaded(saved_path)
+
+        ui.upload(
+            label="Carica file DWG / DXF",
+            auto_upload=True,
+            max_files=1,
+            on_upload=_handle_upload,
+        ).props('accept=".dwg,.dxf" color=cyan-6 dark').classes("w-full")
+
+        with ui.row().classes("w-full justify-end mt-4"):
+            ui.button("Chiudi", on_click=dialog.close).props("dense flat color=slate-400").classes("text-xs")
+
+    return dialog
+

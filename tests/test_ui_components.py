@@ -195,6 +195,7 @@ def test_export_pdf_error_handling(tmp_path):
 
 def test_ui_components_page_construction():
     """Verify that all NiceGUI CAD UI components can be instantiated directly without runtime errors."""
+    from nicegui import Client, ui
     from renderer import render_to_svg
     from ui_components import (
         create_canvas,
@@ -208,52 +209,58 @@ def test_ui_components_page_construction():
     state = CadViewerState(model=model)
     svg_content = render_to_svg(model)
 
-    # 1. Header and quick-navigation chips
-    header, chips = create_header(state)
-    assert header is not None
-    assert "Globale" in chips
-    assert "Tavola 1" in chips
-    assert "Tavola 4" in chips
+    with Client(ui.page("/test_page")):
+        # 1. Header and quick-navigation chips
+        header, chips = create_header(state)
+        assert header is not None
+        assert "Globale" in chips
+        assert "Tavola 1" in chips
+        assert "Tavola 4" in chips
 
-    # 2. Export dialog
-    dialog = create_export_dialog(state)
-    assert dialog is not None
-    assert hasattr(dialog, "mode_radio")
+        # 2. Export dialog
+        dialog = create_export_dialog(state)
+        assert dialog is not None
+        assert hasattr(dialog, "mode_radio")
 
-    # 3. Canvas container with embedded SVG and dialog reference
-    canvas = create_canvas(state, svg_content, export_dialog=dialog)
-    assert canvas is not None
+        # 3. Canvas container with embedded SVG and dialog reference
+        canvas = create_canvas(state, svg_content, export_dialog=dialog)
+        assert canvas is not None
 
-    # 4. Layer drawer
-    drawer = create_layer_drawer(state)
-    assert drawer is not None
+        # 4. Layer drawer
+        drawer = create_layer_drawer(state)
+        assert drawer is not None
 
 
 def test_export_dialog_dynamic_options():
     """Verify export dialog refreshes options dynamically when tavola or custom bbox changes."""
+    from nicegui import Client, ui
+
     model = load_cad_file("Tavole.dwg")
     state = CadViewerState(model=model)
-    dialog = create_export_dialog(state)
 
-    # Initially no custom area
-    assert "custom" not in dialog.mode_radio.options
-    assert "all_tavole" in dialog.mode_radio.options
-    assert "Tavola Corrente (Globale)" in dialog.mode_radio.options["current"]
+    with Client(ui.page("/test_dialog")):
+        dialog = create_export_dialog(state)
 
-    # Change active tavola -> label for current should update
-    state.set_active_tavola("Tavola 2")
-    assert "Tavola Corrente (Tavola 2)" in dialog.mode_radio.options["current"]
+        # Initially no custom area
+        assert "custom" not in dialog.mode_radio.options
+        assert "all_tavole" in dialog.mode_radio.options
+        assert "Tavola Corrente (Globale)" in dialog.mode_radio.options["current"]
 
-    # Select custom bbox -> should dynamically add 'custom' option and select it
-    custom_box = (3700.0, 1600.0, 3800.0, 1700.0)
-    state.set_selected_bbox(custom_box)
-    assert "custom" in dialog.mode_radio.options
-    assert dialog.mode_radio.value == "custom"
-    assert "Area Selezionata" in dialog.mode_radio.options["custom"]
+        # Change active tavola -> label for current should update
+        state.set_active_tavola("Tavola 2")
+        assert "Tavola Corrente (Tavola 2)" in dialog.mode_radio.options["current"]
 
-    # Clear custom bbox -> should remove 'custom' option and fall back
-    state.set_selected_bbox(None)
-    assert "custom" not in dialog.mode_radio.options
-    assert dialog.mode_radio.value == "current"
+        # Select custom bbox -> should dynamically add 'custom' option and select it
+        custom_box = (3700.0, 1600.0, 3800.0, 1700.0)
+        state.set_selected_bbox(custom_box)
+        assert "custom" in dialog.mode_radio.options
+        assert dialog.mode_radio.value == "custom"
+        assert "Area Selezionata" in dialog.mode_radio.options["custom"]
+
+        # Clear custom bbox -> should remove 'custom' option and fall back
+        state.set_selected_bbox(None)
+        assert "custom" not in dialog.mode_radio.options
+        assert dialog.mode_radio.value == "current"
+
 
 

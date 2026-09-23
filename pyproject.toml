@@ -12,6 +12,7 @@ dependencies = [
     "reportlab>=4.0.0",
     "pillow>=10.0.0",
     "pytest>=8.0.0",
+    "pytest-asyncio>=1.4.0",
 ]
 
 [build-system]
@@ -23,5 +24,7 @@ py-modules = ["cad_engine", "renderer", "pdf_exporter", "ui_components", "main"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 
