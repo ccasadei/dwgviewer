@@ -188,6 +188,11 @@ def index_page(file: Optional[str] = None) -> None:
     upload_dialog = create_upload_dialog(
         on_file_loaded=lambda p: ui.navigate.to(f"/?file={p}")
     )
+    dark_mode = ui.dark_mode(value=state.dark_mode)
+
+    def _toggle_theme() -> None:
+        dark_mode.set_value(state.dark_mode)
+
     drawer = create_layer_drawer(state)
 
     header, chips = create_header(
@@ -195,6 +200,7 @@ def index_page(file: Optional[str] = None) -> None:
         on_export_click=export_dialog.open,
         on_drawer_toggle=drawer.toggle,
         on_upload_click=upload_dialog.open,
+        on_theme_toggle=_toggle_theme,
     )
 
     canvas = create_canvas(

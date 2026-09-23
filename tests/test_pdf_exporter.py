@@ -112,3 +112,17 @@ def test_export_invalid_paper_size(tmp_path):
     out_file = str(tmp_path / "invalid_size.pdf")
     with pytest.raises(ValueError):
         export_tavola_to_pdf(model, "Tavola 1", out_file, paper_size="B5")
+
+
+def test_render_context_color_policy_and_lineweights():
+    """Verify PDF export configuration uses ColorPolicy.COLOR and legible lineweights."""
+    from pdf_exporter import _setup_render_context_and_config
+    from ezdxf.addons.drawing.config import ColorPolicy
+
+    model = load_cad_file("Tavole.dwg")
+    ctx, config, layout_props = _setup_render_context_and_config(model)
+
+    assert config.color_policy == ColorPolicy.COLOR
+    assert config.min_lineweight >= 0.18
+    assert config.lineweight_scaling >= 1.0
+    assert layout_props.background_color == "#ffffff"

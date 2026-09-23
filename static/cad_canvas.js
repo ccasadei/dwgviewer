@@ -28,12 +28,20 @@
       if (!svg) return;
       if (!svg.id) svg.id = 'cad-svg';
 
+      // Ensure SVG is a direct child of the viewport so Panzoom captures all pointer events
+      if (svg.parentElement && svg.parentElement !== viewport) {
+        viewport.insertBefore(svg, viewport.firstChild);
+      }
+
       svg.style.width = '100%';
       svg.style.height = '100%';
       svg.style.display = 'block';
 
       // Initialize Panzoom
       if (typeof Panzoom !== 'undefined') {
+        if (this.panzoom) {
+          try { this.panzoom.destroy(); } catch(e) {}
+        }
         this.panzoom = Panzoom(svg, {
           maxScale: 60,
           minScale: 0.1,
@@ -43,28 +51,50 @@
         });
 
         // Wheel zoom centered on cursor
-        viewport.addEventListener('wheel', (e) => {
+        viewport.onwheel = (e) => {
           if (!this.selectionMode && this.panzoom) {
             this.panzoom.zoomWithWheel(e);
           }
-        }, { passive: false });
+        };
 
         // Double click fit / reset
-        viewport.addEventListener('dblclick', (e) => {
+        viewport.ondblclick = (e) => {
           if (!this.selectionMode && this.panzoom) {
             this.panzoom.reset({ animate: true });
           }
-        });
+        };
       }
 
       this.setupSelectionMarquee(viewport, svg);
       this.setupActionPopup();
     },
 
+    ensureInitialized: function() {
+      if (!this.panzoom) {
+        if (window.__CAD_VIEWER_CONFIG__) {
+          const c = window.__CAD_VIEWER_CONFIG__;
+          this.init(c.svgW, c.svgH, c.cadExtents, c.tavole);
+        } else {
+          this.init(this.svgW, this.svgH, this.cadExtents, this.tavole);
+        }
+      }
+    },
+
+    initFromGlobalConfig: function() {
+      if (window.__CAD_VIEWER_CONFIG__) {
+        const c = window.__CAD_VIEWER_CONFIG__;
+        this.init(c.svgW, c.svgH, c.cadExtents, c.tavole);
+      }
+    },
+
     zoomToTavola: function(tavolaKey) {
+      this.ensureInitialized();
       if (!this.panzoom) return;
       if (tavolaKey === 'Globale') {
-        this.panzoom.reset({ animate: true });
+        const svg = document.getElementById('cad-svg');
+        if (svg) svg.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
+        this.panzoom.reset({ animate: false });
+        if (svg) setTimeout(() => { svg.style.transition = ''; }, 360);
         return;
       }
       const tavola = this.tavole[tavolaKey];
@@ -94,6 +124,7 @@
     },
 
     zoomToSvgRect: function(rx, ry, rw, rh) {
+      this.ensureInitialized();
       if (!this.panzoom) return;
       const viewport = document.getElementById('cad-viewport');
       if (!viewport) return;
@@ -118,23 +149,62 @@
       const panX = cw / 2 - boxCX;
       const panY = ch / 2 - boxCY;
 
-      this.panzoom.zoom(targetScale, { animate: true });
-      this.panzoom.pan(panX, panY, { animate: true });
+      const svg = document.getElementById('cad-svg') || viewport.querySelector('svg');
+      if (svg) {
+        svg.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
+        this.panzoom.zoom(targetScale, { animate: false });
+        this.panzoom.pan(panX, panY, { animate: false });
+        setTimeout(() => {
+          if (svg) svg.style.transition = '';
+        }, 360);
+      } else {
+        this.panzoom.zoom(targetScale, { animate: true });
+        this.panzoom.pan(panX, panY, { animate: true });
+      }
     },
 
     zoomIn: function() {
+      this.ensureInitialized();
       if (this.panzoom) this.panzoom.zoomIn({ animate: true });
     },
 
     zoomOut: function() {
+      this.ensureInitialized();
       if (this.panzoom) this.panzoom.zoomOut({ animate: true });
     },
 
     reset: function() {
+      this.ensureInitialized();
       if (this.panzoom) this.panzoom.reset({ animate: true });
     },
 
+    setTheme: function(isDark) {
+      const vp = document.getElementById('cad-viewport');
+      if (!vp) return;
+      if (isDark) {
+        vp.classList.remove('theme-light');
+        vp.style.backgroundColor = '#12151b';
+      } else {
+        vp.classList.add('theme-light');
+        vp.style.backgroundColor = '#f1f5f9';
+      }
+    },
+
     toggleLayerVisibility: function(cleanName, isVisible) {
+      // 1. Direct DOM manipulation on matching layer groups
+      const selector = `.layer-${cleanName}, [data-layer="${cleanName}"]`;
+      const elements = document.querySelectorAll(selector);
+      elements.forEach(function(el) {
+        if (isVisible) {
+          el.classList.remove('hidden');
+          el.style.display = '';
+        } else {
+          el.classList.add('hidden');
+          el.style.display = 'none';
+        }
+      });
+
+      // 2. Dynamic stylesheet rule fallback
       let styleTag = document.getElementById('cad-dynamic-layer-styles');
       if (!styleTag) {
         styleTag = document.createElement('style');
@@ -153,6 +223,10 @@
     },
 
     hideAllLayers: function() {
+      document.querySelectorAll('.cad-layer').forEach(function(el) {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+      });
       let styleTag = document.getElementById('cad-dynamic-layer-styles');
       if (!styleTag) {
         styleTag = document.createElement('style');
@@ -163,6 +237,10 @@
     },
 
     showAllLayers: function() {
+      document.querySelectorAll('.cad-layer').forEach(function(el) {
+        el.classList.remove('hidden');
+        el.style.display = '';
+      });
       const styleTag = document.getElementById('cad-dynamic-layer-styles');
       if (styleTag) {
         styleTag.textContent = '';
@@ -346,4 +424,24 @@
       });
     }
   };
+
+  // Auto-init on script load if global config is already available or poll for it
+  function autoInitCheck(attempts) {
+    if (window.__CAD_VIEWER_CONFIG__ && typeof Panzoom !== 'undefined') {
+      const vp = document.getElementById('cad-viewport');
+      if (vp) {
+        window.cadViewer.initFromGlobalConfig();
+        return;
+      }
+    }
+    if (attempts < 120) {
+      setTimeout(function() { autoInitCheck(attempts + 1); }, 50);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { autoInitCheck(0); });
+  } else {
+    autoInitCheck(0);
+  }
 })();

@@ -263,4 +263,56 @@ def test_export_dialog_dynamic_options():
         assert dialog.mode_radio.value == "current"
 
 
+def test_theme_toggle_handler():
+    """Verify theme toggle properly flips state and button icon."""
+    from nicegui import Client, ui
+    from ui_components import _handle_theme_toggle
+
+    model = load_cad_file("Tavole.dwg")
+    state = CadViewerState(model=model, dark_mode=True)
+
+    with Client(ui.page("/test_theme")):
+        btn = ui.button(icon="dark_mode")
+        called = []
+
+        def callback():
+            called.append(True)
+
+        _handle_theme_toggle(state, theme_btn=btn, callback=callback)
+        assert not state.dark_mode
+        assert btn.props.get("icon") == "light_mode"
+        assert len(called) == 1
+
+        _handle_theme_toggle(state, theme_btn=btn, callback=callback)
+        assert state.dark_mode
+        assert btn.props.get("icon") == "dark_mode"
+        assert len(called) == 2
+
+
+def test_layer_bulk_toggle_handlers():
+    """Verify bulk layer toggle functions correctly modify state."""
+    from nicegui import Client, ui
+    from ui_components import _show_all_layers, _hide_all_layers
+
+    model = load_cad_file("Tavole.dwg")
+    state = CadViewerState(model=model)
+
+    with Client(ui.page("/test_layer_bulk")):
+        cb1 = ui.checkbox(value=True)
+        cb2 = ui.checkbox(value=True)
+        checkbox_refs = {"0": cb1, "A-WALL": cb2}
+
+        # Hide all
+        _hide_all_layers(state, checkbox_refs, None)
+        assert not cb1.value
+        assert not cb2.value
+        assert len(state.visible_layers) == 0
+
+        # Show all
+        _show_all_layers(state, checkbox_refs, None)
+        assert cb1.value
+        assert cb2.value
+        assert len(state.visible_layers) == len(model.layers)
+
+
 

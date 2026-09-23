@@ -354,6 +354,7 @@ def inject_panzoom_head_scripts() -> None:
     ui.add_head_html('<script src="/static/cad_canvas.js"></script>')
     # Dynamic layer style element placeholder
     ui.add_head_html('<style id="cad-dynamic-layer-styles"></style>')
+    ui.add_head_html('<style id="cad-theme-styles">#cad-viewport.theme-light svg { filter: invert(1) hue-rotate(180deg); } #cad-viewport.theme-light { background-color: #f1f5f9 !important; }</style>')
 
 
 def create_header(
@@ -434,10 +435,10 @@ def create_header(
             ).tooltip("Esporta Tavole o ritaglio personalizzato in PDF vettoriale")
 
             # Theme Toggle Button
-            ui.button(
+            theme_btn = ui.button(
                 icon="dark_mode" if state.dark_mode else "light_mode",
-                on_click=lambda: _handle_theme_toggle(state, on_theme_toggle),
             ).props("dense round flat color=slate-300").classes("text-sm").tooltip("Cambia tema Chiaro / Scuro")
+            theme_btn.on("click", lambda: _handle_theme_toggle(state, theme_btn, on_theme_toggle))
 
             # Layer Drawer Toggle
             ui.button(
@@ -494,9 +495,15 @@ def _toggle_selection_mode(
 
 def _handle_theme_toggle(
     state: CadViewerState,
-    callback: Optional[Callable[[], None]],
+    theme_btn: Optional[ui.button] = None,
+    callback: Optional[Callable[[], None]] = None,
 ) -> None:
     state.toggle_dark_mode()
+    if theme_btn is not None:
+        new_icon = "dark_mode" if state.dark_mode else "light_mode"
+        theme_btn.props(f"icon={new_icon}")
+        theme_btn.tooltip("Passa a tema Scuro" if not state.dark_mode else "Passa a tema Chiaro")
+    safe_run_javascript(f"if (window.cadViewer) window.cadViewer.setTheme({str(state.dark_mode).lower()});")
     if callback:
         callback()
 
@@ -555,6 +562,24 @@ def create_canvas(
         # Embed the SVG drawing
         ui.html(svg_content).classes("w-full h-full block")
 
+        # Inject global CAD viewer configuration script into body
+        config_script = f"""
+        <script>
+        (function() {{
+            window.__CAD_VIEWER_CONFIG__ = {{
+                svgW: {svg_bounds[2]},
+                svgH: {svg_bounds[3]},
+                cadExtents: {json.dumps(cad_extents)},
+                tavole: {json.dumps(tavole_data)}
+            }};
+            if (window.cadViewer && window.cadViewer.initFromGlobalConfig) {{
+                window.cadViewer.initFromGlobalConfig();
+            }}
+        }})();
+        </script>
+        """
+        ui.add_body_html(config_script)
+
         # Marquee selection box overlay (dragged by user)
         ui.element("div").props("id=cad-selection-box style='display:none;'").classes(
             "absolute border-2 border-dashed border-cyan-400 bg-cyan-400/20 pointer-events-none z-20"
@@ -596,11 +621,9 @@ def create_canvas(
 
     # Client-side initialization of Panzoom & coordinates after DOM mount
     init_script = f"""
-    setTimeout(function() {{
-        if (window.cadViewer) {{
-            window.cadViewer.init({svg_bounds[2]}, {svg_bounds[3]}, {json.dumps(cad_extents)}, {json.dumps(tavole_data)});
-        }}
-    }}, 80);
+    if (window.cadViewer) {{
+        window.cadViewer.init({svg_bounds[2]}, {svg_bounds[3]}, {json.dumps(cad_extents)}, {json.dumps(tavole_data)});
+    }}
     """
     safe_run_javascript(init_script)
 

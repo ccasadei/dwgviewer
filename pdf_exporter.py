@@ -81,7 +81,9 @@ def _setup_render_context_and_config(
     config = Configuration(
         background_policy=BackgroundPolicy.CUSTOM,
         custom_bg_color="#ffffff",
-        color_policy=ColorPolicy.COLOR_SWAP_BW,
+        color_policy=ColorPolicy.COLOR,
+        min_lineweight=0.20,
+        lineweight_scaling=1.2,
     )
     layout_props = LayoutProperties.modelspace()
     layout_props.set_colors("#ffffff", "#000000")
