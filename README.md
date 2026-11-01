@@ -172,6 +172,19 @@ uv run pytest tests/test_app_e2e.py -v
 
 ---
 
+## ☕ Sostieni il progetto
+
+CAD DWG Viewer è gratuito e sviluppato nel tempo libero. Se ti è utile, puoi offrirmi qualcosa con PayPal:
+
+- [☕ Un caffè — 3 €](https://paypal.me/ccasadei74/3EUR)
+- [🍺 Una birra — 5 €](https://paypal.me/ccasadei74/5EUR)
+- [🍕 Una pizza — 10 €](https://paypal.me/ccasadei74/10EUR)
+- [💚 Importo libero](https://paypal.me/ccasadei74)
+
+Gli importi sono solo suggerimenti: puoi sempre cambiarli prima di confermare. Grazie!
+
+---
+
 ## 📄 Licenza
 
 Rilasciato sotto licenza MIT. Per maggiori informazioni, consultare il file `LICENSE`.
